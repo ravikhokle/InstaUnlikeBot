@@ -18,12 +18,16 @@ from credentials import USERNAME, PASSWORD
 # ======================= CONFIG ==========================
 # =========================================================
 
-SPEED_PROFILE = "aggressive"
+# -------- SPEED PROFILE --------
+# "slow" | "safe" | "fast" | "aggressive"
+SPEED_PROFILE = "fast"
 
-BATCH_SIZE = 100
-MAX_BATCHES = 2
-DAILY_MAX_UNLIKES = 10000
+# -------- LIMITS --------
+BATCH_SIZE = 100           # unlikes per batch
+MAX_BATCHES = 20           # batches per run
+DAILY_MAX_UNLIKES = 5000    # hard stop safety
 
+# -------- TIMING --------
 WAIT_TIMEOUT = 30
 SCROLL_STEP = 3000
 
@@ -56,7 +60,7 @@ SPEEDS = {
         "click": (0.05, 0.15),
         "burst": (0.2, 0.4),
         "batch_pause": (4, 8),
-        "scroll": 0.15,
+        "scroll": 0.3,
     },
 }
 
@@ -78,12 +82,12 @@ def burst_sleep():
 def click_sleep():
     time.sleep(random.uniform(*PROFILE["click"]))
 
-def scroll_into_view(driver, element):
+def ensure_in_view(driver, element):
     driver.execute_script(
-        "arguments[0].scrollIntoView({block:'center', inline:'center'});",
-        element
+        "arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});",
+        element,
     )
-    time.sleep(PROFILE["scroll"])
+    time.sleep(0.1)
 
 # =========================================================
 # ======================== BOT ============================
@@ -118,7 +122,7 @@ try:
 
     login_btn = wait.until(EC.presence_of_element_located((
         By.XPATH,
-        "//form[@id='login_form']//div[@role='button']"
+        "//form[@id='login_form']//div[@role='button'][.//span[normalize-space()='Log in']]"
     )))
     driver.execute_script("arguments[0].click();", login_btn)
 
@@ -153,10 +157,15 @@ try:
         selected = 0
         seen = set()
 
-        # ---------- FAST SELECTION (FIXED) ----------
+        # ---------- FAST SELECTION ----------
         while selected < BATCH_SIZE:
             posts = driver.find_elements(
-                By.XPATH, "//div[@role='button' and @aria-label='Image of Post']"
+                By.XPATH,
+                "//div[@role='button' and (" 
+                "@aria-label='Image of Post' or "
+                "contains(@aria-label, 'Reel') or "
+                "contains(@aria-label, 'Video')"
+                ")]",
             )
 
             if not posts:
@@ -171,9 +180,8 @@ try:
                     continue
                 seen.add(pid)
 
-                scroll_into_view(driver, post)
+                ensure_in_view(driver, post)
                 driver.execute_script("arguments[0].click();", post)
-
                 selected += 1
                 total_unliked += 1
 
@@ -198,7 +206,8 @@ try:
         driver.execute_script("arguments[0].click();", unlike_btn)
 
         confirm_btn = wait.until(EC.element_to_be_clickable((
-            By.XPATH, "//button[.//div[normalize-space()='Unlike']]"
+            By.XPATH,
+            "//div[contains(@class,'_a9-z')]//button[.//div[normalize-space()='Unlike']]"
         )))
         driver.execute_script("arguments[0].click();", confirm_btn)
 
