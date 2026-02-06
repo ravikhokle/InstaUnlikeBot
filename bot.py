@@ -20,7 +20,7 @@ from credentials import USERNAME, PASSWORD
 
 # -------- SPEED PROFILE --------
 # "slow" | "safe" | "fast" | "aggressive"
-SPEED_PROFILE = "fast"
+SPEED_PROFILE = "safe"
 
 # -------- LIMITS --------
 BATCH_SIZE = 100           # unlikes per batch
